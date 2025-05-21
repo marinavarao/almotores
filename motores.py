@@ -6,7 +6,7 @@ import pandas as pd
 from datetime import datetime
 
 # Configurações de segurança
-PASSWORD = "kepla321"  # Troque por uma senha complexa
+PASSWORD = "mane2025"  # Troque por uma senha complexa
 MAX_ATTEMPTS = 3
 LOG_FILE = "access_log.txt"
 
