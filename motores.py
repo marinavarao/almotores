@@ -247,7 +247,7 @@ def manage_users():
     users = pd.read_sql("SELECT id, username, role, is_active FROM users", conn)
     st.dataframe(users, use_container_width=True)
     
-     st.markdown("---")
+    st.markdown("---")
     st.subheader("Modificar Usuários")
     
     # Selecionar usuário para edição
