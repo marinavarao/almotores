@@ -101,7 +101,7 @@ def main_app():
 
             try:
                 # ATENÇÃO: Substitua pelo caminho correto do seu arquivo
-                return pd.read_excel(r"C:\Users\Usuário\Documents\motores.xlsx")
+                return pd.read_excel("motores.xlsx")
             except FileNotFoundError:
                 st.error("Arquivo 'motores.xlsx' não encontrado. Verifique o caminho.")
                 return pd.DataFrame()
