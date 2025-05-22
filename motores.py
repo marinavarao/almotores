@@ -3,6 +3,8 @@
 # streamlit run motores.py
 import streamlit as st
 import pandas as pd
+import sqlite3
+import hashlib
 from datetime import datetime
 
 # Configurações de segurança
