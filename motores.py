@@ -184,30 +184,6 @@ def user_management():
                     conn.close()
                     st.success("Alterações salvas!")
 
-def main_app():
-    if not login_component():
-        st.stop()
-    
-    # Barra lateral com informações do usuário
-    with st.sidebar:
-        st.markdown(f"###{st.session_state.user['username']}")
-        st.markdown(f"**Perfil:** {st.session_state.user['role']}")
-        
-        if st.button("Atualizar Dados"):
-            st.cache_data.clear()
-            st.rerun()
-            
-        if st.button("Sair"):
-            log_logout(st.session_state.user['id'])
-            del st.session_state.user
-            st.rerun()
-        
-        # Mostrar gerenciamento de usuários apenas para admin
-        if st.session_state.user['role'] == 'admin':
-            if st.toggle("Mostrar Gerenciamento"):
-                user_management()
-                st.stop()
-
 # Log de acesso
 def log_access(user_id, success, username=None):
     conn = sqlite3.connect(USER_DB)
@@ -240,6 +216,28 @@ def log_logout(user_id):
 
 # Seu código original (adaptado)
 def main_app():
+    if not login_component():
+        st.stop()
+    
+    # Barra lateral com informações do usuário
+    with st.sidebar:
+        st.markdown(f"###{st.session_state.user['username']}")
+        st.markdown(f"**Perfil:** {st.session_state.user['role']}")
+        
+        if st.button("Atualizar Dados"):
+            st.cache_data.clear()
+            st.rerun()
+            
+        if st.button("Sair"):
+            log_logout(st.session_state.user['id'])
+            del st.session_state.user
+            st.rerun()
+        
+        # Mostrar gerenciamento de usuários apenas para admin
+        if st.session_state.user['role'] == 'admin':
+            if st.toggle("Mostrar Gerenciamento"):
+                user_management()
+                st.stop()
     st.set_page_config(
             page_title="Catálogo de Motores - Busca por TAG",
             layout="wide",
