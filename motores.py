@@ -190,14 +190,14 @@ def main_app():
     
     # Barra lateral com informações do usuário
     with st.sidebar:
-        st.markdown(f"### 👤 {st.session_state.user['username']}")
+        st.markdown(f"###{st.session_state.user['username']}")
         st.markdown(f"**Perfil:** {st.session_state.user['role']}")
         
-        if st.button("🔄 Atualizar Dados"):
+        if st.button("Atualizar Dados"):
             st.cache_data.clear()
             st.rerun()
             
-        if st.button("🚪 Sair"):
+        if st.button("Sair"):
             log_logout(st.session_state.user['id'])
             del st.session_state.user
             st.rerun()
@@ -238,9 +238,34 @@ def check_password():
         st.stop()
 
 # Log de acesso
-def log_access(success):
-    with open(LOG_FILE, "a") as f:
-        f.write(f"{datetime.now()} - {'SUCCESS' if success else 'FAILED'} - {st.experimental_get_query_params().get('client', ['unknown'])[0]}\n")
+def log_access(user_id, success, username=None):
+    conn = sqlite3.connect(USER_DB)
+    c = conn.cursor()
+    
+    ip = st.experimental_get_query_params().get('client', ['unknown'])[0]
+    
+    if success:
+        c.execute("INSERT INTO access_logs (user_id, login_time, ip_address, success) VALUES (?, ?, ?, ?)",
+                 (user_id, datetime.now(), ip, 1))
+    else:
+        c.execute("INSERT INTO access_logs (login_time, ip_address, success) VALUES (?, ?, ?)",
+                 (datetime.now(), ip, 0))
+    
+    conn.commit()
+    conn.close()
+
+def log_logout(user_id):
+    conn = sqlite3.connect(USER_DB)
+    c = conn.cursor()
+    
+    # Atualiza o último registro de login com o horário de logout
+    c.execute('''UPDATE access_logs SET logout_time = ?
+                WHERE user_id = ? AND logout_time IS NULL
+                ORDER BY login_time DESC LIMIT 1''',
+             (datetime.now(), user_id))
+    
+    conn.commit()
+    conn.close()
 
 # Seu código original (adaptado)
 def main_app():
@@ -374,32 +399,3 @@ def main_app():
 # Fluxo principal
 check_password()
 main_app()
-
-def log_access(user_id, success, username=None):
-    conn = sqlite3.connect(USER_DB)
-    c = conn.cursor()
-    
-    ip = st.experimental_get_query_params().get('client', ['unknown'])[0]
-    
-    if success:
-        c.execute("INSERT INTO access_logs (user_id, login_time, ip_address, success) VALUES (?, ?, ?, ?)",
-                 (user_id, datetime.now(), ip, 1))
-    else:
-        c.execute("INSERT INTO access_logs (login_time, ip_address, success) VALUES (?, ?, ?)",
-                 (datetime.now(), ip, 0))
-    
-    conn.commit()
-    conn.close()
-
-def log_logout(user_id):
-    conn = sqlite3.connect(USER_DB)
-    c = conn.cursor()
-    
-    # Atualiza o último registro de login com o horário de logout
-    c.execute('''UPDATE access_logs SET logout_time = ?
-                WHERE user_id = ? AND logout_time IS NULL
-                ORDER BY login_time DESC LIMIT 1''',
-             (datetime.now(), user_id))
-    
-    conn.commit()
-    conn.close()
