@@ -247,7 +247,54 @@ def manage_users():
     users = pd.read_sql("SELECT id, username, role, is_active FROM users", conn)
     st.dataframe(users, use_container_width=True)
     
+     st.markdown("---")
+    st.subheader("Modificar Usuários")
+    
+    # Selecionar usuário para edição
+    users_df = pd.read_sql("SELECT id, username, role FROM users WHERE username != 'admin'", conn)
+    selected_user = st.selectbox(
+        "Selecione um usuário para modificar:",
+        options=users_df['username'],
+        index=None,
+        key="user_selector"
+    )
+    
+    if selected_user:
+        user_data = users_df[users_df['username'] == selected_user].iloc[0]
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # EDITAR SENHA
+            with st.form(f"edit_pw_{user_data['id']}"):
+                st.write("### Alterar Senha")
+                new_password = st.text_input("Nova senha", type="password", key=f"new_pw_{user_data['id']}")
+                if st.form_submit_button("Atualizar Senha"):
+                    if new_password:
+                        hashed_pw = hashlib.sha256(new_password.encode()).hexdigest()
+                        conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", 
+                                    (hashed_pw, user_data['id']))
+                        conn.commit()
+                        st.success("Senha atualizada!")
+                    else:
+                        st.error("Digite uma nova senha")
+        
+        with col2:
+            # EXCLUIR USUÁRIO
+            with st.form(f"delete_{user_data['id']}"):
+                st.write("### Excluir Usuário")
+                confirm = st.checkbox("Confirmar exclusão")
+                if st.form_submit_button("🗑️ Excluir"):
+                    if confirm:
+                        conn.execute("DELETE FROM users WHERE id = ?", (user_data['id'],))
+                        conn.commit()
+                        st.success(f"Usuário {selected_user} excluído!")
+                        st.rerun()
+                    else:
+                        st.warning("Marque a confirmação")
+    
     conn.close()
+
 
 # --- Ponto de Entrada ---
 if __name__ == "__main__":
