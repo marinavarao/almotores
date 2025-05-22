@@ -207,35 +207,6 @@ def main_app():
             if st.toggle("Mostrar Gerenciamento"):
                 user_management()
                 st.stop()
-    
-# Configurações de segurança
-PASSWORD = "kepla321"  # Troque por uma senha complexa
-MAX_ATTEMPTS = 3
-LOG_FILE = "access_log.txt"
-
-# Verificação de senha
-def check_password():
-    if 'authenticated' not in st.session_state:
-        st.session_state.authenticated = False
-        st.session_state.attempts = 0
-    
-    if not st.session_state.authenticated:
-        password = st.text_input("Digite a senha de acesso:", type="password")
-        
-        if st.button("Acessar"):
-            if password == PASSWORD:
-                st.session_state.authenticated = True
-                log_access(True)
-                st.rerun()
-            else:
-                st.session_state.attempts += 1
-                log_access(False)
-                if st.session_state.attempts >= MAX_ATTEMPTS:
-                    st.error("Número máximo de tentativas excedido")
-                    st.stop()
-                else:
-                    st.error(f"Senha incorreta. Tentativas restantes: {MAX_ATTEMPTS - st.session_state.attempts}")
-        st.stop()
 
 # Log de acesso
 def log_access(user_id, success, username=None):
