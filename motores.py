@@ -16,12 +16,13 @@ def init_db():
     conn = sqlite3.connect(USER_DB)
     c = conn.cursor()
     
-    c.execute('''CREATE TABLE IF NOT EXISTS users
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                 username TEXT UNIQUE NOT NULL,
-                 password_hash TEXT NOT NULL,
-                 role TEXT NOT NULL,
-                 is_active INTEGER DEFAULT 1)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS active_sessions
+                 (session_id TEXT PRIMARY KEY,
+                  user_id INTEGER,
+                  login_time TIMESTAMP,
+                  last_activity TIMESTAMP,
+                  ip_address TEXT,
+                  FOREIGN KEY(user_id) REFERENCES users(id))''')
     
     # Inserir admin padrão se não existir
     try:
@@ -45,31 +46,69 @@ def authenticate(username, password):
         return {"id": user[0], "username": username, "role": user[2]}
     return None
 
-def login_form():
-    if 'user' not in st.session_state:
-        st.session_state.user = None
-        st.session_state.attempts = 0
-
-    if st.session_state.user:
-        return True
-
-    with st.form("login"):
-        st.write("## Autenticação")
-        username = st.text_input("Usuário")
-        password = st.text_input("Senha", type="password")
+def login(username, password):
+    user = authenticate(username, password)  # Sua função existente
+    
+    if user:
+        # Registrar sessão no banco de dados
+        conn = sqlite3.connect(USER_DB)
+        c = conn.cursor()
         
-        if st.form_submit_button("Entrar"):
-            if st.session_state.attempts >= MAX_ATTEMPTS:
-                st.error("Muitas tentativas falhas. Tente novamente mais tarde.")
-                return False
-            
-            user = authenticate(username, password)
-            if user:
-                st.session_state.user = user
-                st.rerun()
-            else:
-                st.session_state.attempts += 1
-                st.error(f"Credenciais inválidas. Tentativa {st.session_state.attempts}/{MAX_ATTEMPTS}")
+        session_id = str(uuid.uuid4())  # ID único para a sessão
+        ip = st.experimental_get_query_params().get('client', ['unknown'])[0]
+        
+        c.execute('''INSERT INTO active_sessions 
+                    (session_id, user_id, login_time, last_activity, ip_address)
+                    VALUES (?, ?, ?, ?, ?)''',
+                (session_id, user['id'], datetime.now(), datetime.now(), ip))
+        
+        conn.commit()
+        conn.close()
+        
+        # Armazena na sessão do Streamlit
+        st.session_state.user = user
+        st.session_state.session_id = session_id
+        
+    return user
+
+def check_active_session():
+    if 'user' in st.session_state:
+        # Atualiza tempo de atividade
+        conn = sqlite3.connect(USER_DB)
+        c = conn.cursor()
+        c.execute('''UPDATE active_sessions 
+                    SET last_activity = ?
+                    WHERE session_id = ?''',
+                (datetime.now(), st.session_state.session_id))
+        conn.commit()
+        conn.close()
+        return True
+    
+    # Verifica se há sessão válida no banco de dados
+    conn = sqlite3.connect(USER_DB)
+    c = conn.cursor()
+    
+    # Sessão expira após 8 horas de inatividade
+    c.execute('''SELECT user_id FROM active_sessions 
+                WHERE last_activity > ?''',
+            (datetime.now() - timedelta(hours=8),))
+    
+    active_session = c.fetchone()
+    if active_session:
+        user_id = active_session[0]
+        c.execute('''SELECT username, role FROM users 
+                    WHERE id = ?''', (user_id,))
+        user_data = c.fetchone()
+        
+        if user_data:
+            st.session_state.user = {
+                'id': user_id,
+                'username': user_data[0],
+                'role': user_data[1]
+            }
+            return True
+    
+    conn.close()
     return False
 
 # --- Aplicação Principal ---
@@ -299,6 +338,9 @@ def manage_users():
 # --- Ponto de Entrada ---
 if __name__ == "__main__":
     init_db()
-    if not login_form():
-        st.stop()
+    
+    if not check_active_session():
+        if not login_form():
+            st.stop()
+    
     main_app()
