@@ -111,6 +111,23 @@ def check_active_session():
     conn.close()
     return False
 
+def logout():
+    if 'session_id' in st.session_state:
+        conn = sqlite3.connect(USER_DB)
+        c = conn.cursor()
+        c.execute('''DELETE FROM active_sessions 
+                    WHERE session_id = ?''',
+                (st.session_state.session_id,))
+        conn.commit()
+        conn.close()
+    
+    if 'user' in st.session_state:
+        del st.session_state.user
+    if 'session_id' in st.session_state:
+        del st.session_state.session_id
+    
+    st.rerun()
+    
 # --- Aplicação Principal ---
 def main_app():
     st.set_page_config(
