@@ -46,6 +46,33 @@ def authenticate(username, password):
         return {"id": user[0], "username": username, "role": user[2]}
     return None
 
+def login_form():
+    if 'user' not in st.session_state:
+        st.session_state.user = None
+        st.session_state.attempts = 0
+
+    if st.session_state.user:
+        return True
+
+    with st.form("login"):
+        st.write("## Autenticação")
+        username = st.text_input("Usuário")
+        password = st.text_input("Senha", type="password")
+        
+        if st.form_submit_button("Entrar"):
+            if st.session_state.attempts >= MAX_ATTEMPTS:
+                st.error("Muitas tentativas falhas. Tente novamente mais tarde.")
+                return False
+            
+            user = authenticate(username, password)
+            if user:
+                st.session_state.user = user
+                st.rerun()
+            else:
+                st.session_state.attempts += 1
+                st.error(f"Credenciais inválidas. Tentativa {st.session_state.attempts}/{MAX_ATTEMPTS}")
+    return False
+
 def login(username, password):
     user = authenticate(username, password)  # Sua função existente
     
