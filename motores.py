@@ -5,7 +5,9 @@ import streamlit as st
 import pandas as pd
 import sqlite3
 import hashlib
-from datetime import datetime
+from datetime import datetime, timedelta  # Importação corrigida
+import uuid
+import os
 
 # Configurações
 USER_DB = "users.db"
@@ -16,13 +18,23 @@ def init_db():
     conn = sqlite3.connect(USER_DB)
     c = conn.cursor()
     
+    # Tabela de usuários
+    c.execute('''CREATE TABLE IF NOT EXISTS users
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 username TEXT UNIQUE NOT NULL,
+                 password_hash TEXT NOT NULL,
+                 role TEXT NOT NULL,
+                 is_active INTEGER DEFAULT 1)''')
+    
+    # Tabela de sessões
     c.execute('''CREATE TABLE IF NOT EXISTS active_sessions
                  (session_id TEXT PRIMARY KEY,
-                  user_id INTEGER,
-                  login_time TIMESTAMP,
-                  last_activity TIMESTAMP,
+                  user_id INTEGER NOT NULL,
+                  login_time TIMESTAMP NOT NULL,
+                  last_activity TIMESTAMP NOT NULL,
                   ip_address TEXT,
                   FOREIGN KEY(user_id) REFERENCES users(id))''')
+
     
     # Inserir admin padrão se não existir
     try:
@@ -74,84 +86,117 @@ def login_form():
     return False
 
 def login(username, password):
-    user = authenticate(username, password)  # Sua função existente
-    
+    user, error = authenticate(username, password)
     if user:
-        # Registrar sessão no banco de dados
-        conn = sqlite3.connect(USER_DB)
-        c = conn.cursor()
-        
-        session_id = str(uuid.uuid4())  # ID único para a sessão
-        ip = st.experimental_get_query_params().get('client', ['unknown'])[0]
-        
-        c.execute('''INSERT INTO active_sessions 
-                    (session_id, user_id, login_time, last_activity, ip_address)
-                    VALUES (?, ?, ?, ?, ?)''',
-                (session_id, user['id'], datetime.now(), datetime.now(), ip))
-        
-        conn.commit()
-        conn.close()
-        
-        # Armazena na sessão do Streamlit
-        st.session_state.user = user
-        st.session_state.session_id = session_id
-        
-    return user
+        try:
+            conn = sqlite3.connect(USER_DB)
+            c = conn.cursor()
+            
+            session_id = str(uuid.uuid4())
+            ip = st.experimental_get_query_params().get('client', ['unknown'])[0]
+            
+            # Remove sessões antigas do mesmo usuário
+            c.execute('''DELETE FROM active_sessions 
+                        WHERE user_id = ?''', (user['id'],))
+            
+            # Insere nova sessão
+            c.execute('''INSERT INTO active_sessions 
+                        (session_id, user_id, login_time, last_activity, ip_address)
+                        VALUES (?, ?, ?, ?, ?)''',
+                     (session_id, user['id'], datetime.now(), datetime.now(), ip))
+            
+            conn.commit()
+            
+            # Atualiza a sessão
+            st.session_state.user = user
+            st.session_state.session_id = session_id
+            st.rerun()
+            
+        except Exception as e:
+            st.error(f"Erro ao iniciar sessão: {str(e)}")
+        finally:
+            if conn:
+                conn.close()
+    elif error:
+        st.error(error)
 
 def check_active_session():
-    if 'user' in st.session_state:
-        # Atualiza tempo de atividade
+    # Verifica primeiro se já está na sessão do Streamlit
+    if 'user' in st.session_state and 'session_id' in st.session_state:
+        try:
+            conn = sqlite3.connect(USER_DB)
+            c = conn.cursor()
+            
+            # Atualiza o timestamp de atividade
+            c.execute('''UPDATE active_sessions 
+                        SET last_activity = ?
+                        WHERE session_id = ?''',
+                     (datetime.now(), st.session_state.session_id))
+            conn.commit()
+            return True
+        except Exception as e:
+            st.error(f"Erro ao verificar sessão: {str(e)}")
+            return False
+        finally:
+            if conn:
+                conn.close()
+    
+    # Se não há sessão no state, verifica no banco de dados
+    try:
         conn = sqlite3.connect(USER_DB)
         c = conn.cursor()
-        c.execute('''UPDATE active_sessions 
-                    SET last_activity = ?
-                    WHERE session_id = ?''',
-                (datetime.now(), st.session_state.session_id))
-        conn.commit()
-        conn.close()
-        return True
-    
-    # Verifica se há sessão válida no banco de dados
-    conn = sqlite3.connect(USER_DB)
-    c = conn.cursor()
-    
-    # Sessão expira após 8 horas de inatividade
-    c.execute('''SELECT user_id FROM active_sessions 
-                WHERE last_activity > ?''',
-            (datetime.now() - timedelta(hours=8),))
-    
-    active_session = c.fetchone()
-    if active_session:
-        user_id = active_session[0]
-        c.execute('''SELECT username, role FROM users 
-                    WHERE id = ?''', (user_id,))
-        user_data = c.fetchone()
         
-        if user_data:
-            st.session_state.user = {
-                'id': user_id,
-                'username': user_data[0],
-                'role': user_data[1]
-            }
-            return True
+        # Verifica sessões válidas (últimas 8 horas)
+        c.execute('''SELECT user_id, session_id 
+                    FROM active_sessions 
+                    WHERE last_activity > ?''',
+                (datetime.now() - timedelta(hours=8),))
+        
+        active_session = c.fetchone()
+        
+        if active_session:
+            user_id, session_id = active_session
+            c.execute('''SELECT username, role FROM users 
+                        WHERE id = ? AND is_active = 1''', (user_id,))
+            user_data = c.fetchone()
+            
+            if user_data:
+                # Restaura a sessão
+                st.session_state.user = {
+                    'id': user_id,
+                    'username': user_data[0],
+                    'role': user_data[1]
+                }
+                st.session_state.session_id = session_id
+                return True
+    except Exception as e:
+        st.error(f"Erro ao recuperar sessão: {str(e)}")
+        return False
+    finally:
+        if conn:
+            conn.close()
     
-    conn.close()
     return False
-
+    
 def logout():
     if 'session_id' in st.session_state:
-        conn = sqlite3.connect(USER_DB)
-        c = conn.cursor()
-        c.execute('''DELETE FROM active_sessions 
-                    WHERE session_id = ?''',
-                (st.session_state.session_id,))
-        conn.commit()
-        conn.close()
+        try:
+            conn = sqlite3.connect(USER_DB)
+            c = conn.cursor()
+            c.execute('''DELETE FROM active_sessions 
+                        WHERE session_id = ?''',
+                     (st.session_state.session_id,))
+            conn.commit()
+        except Exception as e:
+            st.error(f"Erro ao encerrar sessão: {str(e)}")
+        finally:
+            if conn:
+                conn.close()
     
-    if 'user' in st.session_state:
-        del st.session_state.user
-    if 'session_id' in st.session_state:
-        del st.session_state.session_id
+    # Limpa a sessão
+    keys = list(st.session_state.keys())
+    for key in keys:
+        del st.session_state[key]
     
     st.rerun()
     
