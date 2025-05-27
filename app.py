@@ -1,6 +1,13 @@
 # app.py
 from database import init_db, restore_from_json
 from auth import authenticate
+import streamlit as st
+import pandas as pd
+import sqlite3
+import hashlib
+from datetime import datetime, timedelta  # Importação corrigida
+import uuid
+import os
 
 def main():
     # Inicialização
