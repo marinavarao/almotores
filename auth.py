@@ -1,26 +1,46 @@
 # auth.py
+from database import get_db_connection
 from datetime import datetime, timedelta
+import hashlib
+import uuid
 
-def login(username, password):
-    conn = sqlite3.connect('users.db')
-    c = conn.cursor()
-    
-    # Verifica credenciais
-    c.execute('''SELECT id, password_hash FROM users 
-               WHERE username = ? AND is_active = 1''', (username,))
-    user = c.fetchone()
-    
-    if user and check_password_hash(user[1], password):
-        session_id = generate_session_id()
-        expires_at = datetime.now() + timedelta(days=30)  # Sessão de 30 dias
+def authenticate(username, password):
+    """Autentica usuário e cria sessão"""
+    conn = get_db_connection()
+    try:
+        c = conn.cursor()
+        password_hash = hashlib.sha256(password.encode()).hexdigest()
         
-        # Registra sessão
-        c.execute('''INSERT INTO sessions 
-                   (session_id, user_id, login_time, expires_at, ip_address)
-                   VALUES (?, ?, ?, ?, ?)''',
-                   (session_id, user[0], datetime.now(), expires_at, get_client_ip()))
+        c.execute("""
+            SELECT id, username, role FROM users 
+            WHERE username = ? AND password_hash = ? AND is_active = 1
+        """, (username, password_hash))
         
-        conn.commit()
+        user = c.fetchone()
+        if user:
+            session_id = str(uuid.uuid4())
+            c.execute("""
+                INSERT INTO sessions 
+                (session_id, user_id, login_time, last_activity)
+                VALUES (?, ?, ?, ?)
+            """, (session_id, user[0], datetime.now(), datetime.now()))
+            
+            conn.commit()
+            return {
+                "id": user[0],
+                "username": user[1],
+                "role": user[2],
+                "session_id": session_id
+            }
+    finally:
         conn.close()
-        return session_id
     return None
+
+def logout_user(user_id):
+    """Remove sessão do usuário"""
+    conn = get_db_connection()
+    try:
+        conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+        conn.commit()
+    finally:
+        conn.close()
