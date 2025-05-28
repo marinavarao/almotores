@@ -34,11 +34,23 @@ def authenticate(username, password):
         conn.close()
     return None
 
-def logout_user(session_id):
-    """Remove uma sessão do banco de dados"""
-    conn = get_db_connection()
+def logout_user(user_id=None, session_id=None):
+    """Remove a sessão do usuário com tratamento robusto"""
+    conn = None
     try:
-        conn.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        if session_id:
+            cursor.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
+        elif user_id:
+            cursor.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+        
         conn.commit()
+        return True
+    except sqlite3.Error as e:
+        print(f"Erro ao fazer logout: {str(e)}")
+        return False
     finally:
-        conn.close()
+        if conn:
+            conn.close()
