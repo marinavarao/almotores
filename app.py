@@ -9,6 +9,7 @@ import os
 from auth import authenticate, logout_user
 from database import init_db, get_db_connection
 from backup_manager import backup_database
+from database import create_user  # Adicione esta importação
 
 # Configurações
 DB_PATH = "users.db"
