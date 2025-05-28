@@ -68,3 +68,13 @@ def create_user(username, password, full_name="", email="", role="user"):
         return False  # Usuário já existe
     finally:
         conn.close()
+
+def check_table_exists(table_name):
+    """Verifica se uma tabela existe no banco"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}'")
+        return cursor.fetchone() is not None
+    finally:
+        conn.close()
