@@ -98,10 +98,21 @@ def manage_users():
                     st.warning("Campos obrigatórios marcados com *")
     
     with tab2:
-        conn = get_db_connection()
-        users = pd.read_sql("SELECT id, username, full_name, email, role, is_active FROM users", conn)
-        st.dataframe(users, hide_index=True)
-        conn.close()
+        try:
+            conn = get_db_connection()
+            # Consulta segura usando parâmetros
+            query = """
+                SELECT id, username, full_name, email, role, is_active 
+                FROM users
+                ORDER BY username
+            """
+            users = pd.read_sql(query, conn)
+            st.dataframe(users, hide_index=True)
+        except Exception as e:
+            st.error(f"Erro ao acessar o banco de dados: {str(e)}")
+        finally:
+            if 'conn' in locals():
+                conn.close()
     
     with tab3:
         conn = get_db_connection()
