@@ -18,6 +18,12 @@ MAX_INACTIVITY_DAYS = 30  # Dias de inatividade permitidos
 # Inicialização do banco de dados
 init_db()
 
+# Cria usuário admin padrão se não existir
+try:
+    create_user("admin", "admin123", role="admin")
+except:
+    pass  # Usuário já existe
+
 def check_persisted_session():
     """Verifica sessões válidas no banco de dados"""
     conn = get_db_connection()
@@ -64,82 +70,73 @@ def show_login_form():
             else:
                 st.error("Credenciais inválidas")
 
+# Adicione esta função no app.py
 def manage_users():
-    """Interface de gerenciamento de usuários (para admin)"""
+    """Interface de gerenciamento de usuários"""
     st.title("Gerenciamento de Usuários")
     
-    conn = sqlite3.connect(USER_DB)
+    # Abas para diferentes operações
+    tab1, tab2, tab3 = st.tabs(["Criar Usuário", "Listar Usuários", "Editar Usuários"])
     
-    # Adicionar usuário
-    with st.expander("➕ Novo Usuário"):
-        with st.form("add_user"):
-            username = st.text_input("Nome de usuário")
-            password = st.text_input("Senha", type="password")
-            role = st.selectbox("Perfil", ["operador", "supervisor", "admin"])
+    with tab1:
+        with st.form("create_user_form"):
+            st.write("### Novo Usuário")
+            username = st.text_input("Nome de usuário*")
+            password = st.text_input("Senha*", type="password")
+            full_name = st.text_input("Nome completo")
+            email = st.text_input("Email")
+            role = st.selectbox("Tipo de usuário", ["user", "admin"])
             
-            if st.form_submit_button("Salvar"):
+            if st.form_submit_button("Criar Usuário"):
                 if username and password:
+                    if create_user(username, password, full_name, email, role):
+                        st.success(f"Usuário {username} criado com sucesso!")
+                    else:
+                        st.error("Nome de usuário já existe")
+                else:
+                    st.warning("Campos obrigatórios marcados com *")
+    
+    with tab2:
+        conn = get_db_connection()
+        users = pd.read_sql("SELECT id, username, full_name, email, role, is_active FROM users", conn)
+        st.dataframe(users, hide_index=True)
+        conn.close()
+    
+    with tab3:
+        conn = get_db_connection()
+        user_list = pd.read_sql("SELECT id, username FROM users", conn)['username'].tolist()
+        selected_user = st.selectbox("Selecionar usuário", user_list)
+        
+        if selected_user:
+            user_data = pd.read_sql(f"SELECT * FROM users WHERE username = '{selected_user}'", conn).iloc[0]
+            
+            with st.form("edit_user_form"):
+                st.write(f"Editando: {selected_user}")
+                new_username = st.text_input("Nome de usuário", value=user_data['username'])
+                new_role = st.selectbox("Tipo de usuário", ["user", "admin"], 
+                                      index=0 if user_data['role'] == "user" else 1)
+                is_active = st.checkbox("Ativo", value=bool(user_data['is_active']))
+                new_password = st.text_input("Nova senha (deixe em branco para manter)", type="password")
+                
+                if st.form_submit_button("Salvar Alterações"):
                     try:
-                        hashed = hashlib.sha256(password.encode()).hexdigest()
-                        conn.execute("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
-                                     (username, hashed, role))
+                        if new_password:
+                            password_hash = hashlib.sha256(new_password.encode()).hexdigest()
+                            conn.execute('''UPDATE users SET 
+                                        username = ?, role = ?, is_active = ?, password_hash = ?
+                                        WHERE id = ?''',
+                                        (new_username, new_role, int(is_active), password_hash, user_data['id']))
+                        else:
+                            conn.execute('''UPDATE users SET 
+                                        username = ?, role = ?, is_active = ?
+                                        WHERE id = ?''',
+                                        (new_username, new_role, int(is_active), user_data['id']))
                         conn.commit()
-                        st.success("Usuário criado!")
-                    except sqlite3.IntegrityError:
-                        st.error("Usuário já existe")
-    
-    # Listar usuários
-    st.subheader("Usuários Existentes")
-    users = pd.read_sql("SELECT id, username, role, is_active FROM users", conn)
-    st.dataframe(users, use_container_width=True)
-    
-    st.markdown("---")
-    st.subheader("Modificar Usuários")
-    
-    # Selecionar usuário para edição
-    users_df = pd.read_sql("SELECT id, username, role FROM users WHERE username != 'admin'", conn)
-    selected_user = st.selectbox(
-        "Selecione um usuário para modificar:",
-        options=users_df['username'],
-        index=None,
-        key="user_selector"
-    )
-    
-    if selected_user:
-        user_data = users_df[users_df['username'] == selected_user].iloc[0]
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # EDITAR SENHA
-            with st.form(f"edit_pw_{user_data['id']}"):
-                st.write("### Alterar Senha")
-                new_password = st.text_input("Nova senha", type="password", key=f"new_pw_{user_data['id']}")
-                if st.form_submit_button("Atualizar Senha"):
-                    if new_password:
-                        hashed_pw = hashlib.sha256(new_password.encode()).hexdigest()
-                        conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", 
-                                    (hashed_pw, user_data['id']))
-                        conn.commit()
-                        st.success("Senha atualizada!")
-                    else:
-                        st.error("Digite uma nova senha")
-        
-        with col2:
-            # EXCLUIR USUÁRIO
-            with st.form(f"delete_{user_data['id']}"):
-                st.write("### Excluir Usuário")
-                confirm = st.checkbox("Confirmar exclusão")
-                if st.form_submit_button("🗑️ Excluir"):
-                    if confirm:
-                        conn.execute("DELETE FROM users WHERE id = ?", (user_data['id'],))
-                        conn.commit()
-                        st.success(f"Usuário {selected_user} excluído!")
+                        st.success("Usuário atualizado!")
                         st.rerun()
-                    else:
-                        st.warning("Marque a confirmação")
-    
-    conn.close()
+                    except sqlite3.IntegrityError:
+                        st.error("Nome de usuário já existe")
+        conn.close()
 
 def main_app():
     st.set_page_config(
