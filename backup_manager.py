@@ -3,7 +3,31 @@ import sqlite3
 import json
 import os
 from datetime import datetime
+from database import DB_PATH  # Certifique-se que DB_PATH está definido em database.py
 
+def backup_database():
+    """Exporta dados para JSON"""
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        data = {
+            "timestamp": str(datetime.now()),
+            "users": [],
+            "sessions": []
+        }
+        
+        # Exporta usuários
+        cursor = conn.execute("SELECT * FROM users")
+        data["users"] = [dict(row) for row in cursor]
+        
+        # Exporta sessões ativas
+        cursor = conn.execute("SELECT * FROM sessions")
+        data["sessions"] = [dict(row) for row in cursor]
+        
+        with open('backup.json', 'w') as f:
+            json.dump(data, f, indent=2, default=str)
+    finally:
+        conn.close()
+        
 def export_to_json():
     conn = sqlite3.connect('users.db')
     
