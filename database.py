@@ -6,8 +6,14 @@ from datetime import datetime
 DB_PATH = "users.db"
 
 def get_db_connection():
-    """Retorna uma conexão com o banco de dados"""
-    return sqlite3.connect(DB_PATH)
+    """Retorna uma conexão com tratamento de erros"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row  # Para acesso por nome de coluna
+        return conn
+    except sqlite3.Error as e:
+        st.error(f"Erro ao conectar ao banco de dados: {str(e)}")
+        raise
 
 def init_db():
     """Inicializa o banco de dados com tabelas necessárias"""
