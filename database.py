@@ -1,5 +1,6 @@
 # database.py
 import sqlite3
+import hashlib
 from datetime import datetime
 
 DB_PATH = "users.db"
