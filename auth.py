@@ -1,6 +1,6 @@
 # auth.py
-from database import get_db_connection
 from datetime import datetime
+from database import get_db_connection
 import hashlib
 import uuid
 
