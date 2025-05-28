@@ -1,5 +1,6 @@
 *.db
 __pycache__/
+users.db
 *.pyc
 *.xlsx
 env/
