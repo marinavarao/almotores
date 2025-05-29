@@ -173,6 +173,47 @@ def manage_users():
             3. Armazene em local seguro
             """)
 
+def backup_database():
+    """Cria um backup do banco de dados em formato JSON"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Obter dados de usuários
+        cursor.execute("SELECT * FROM users")
+        columns = [column[0] for column in cursor.description]  # Pega os nomes das colunas
+        
+        # Converter cada linha em um dicionário com os nomes das colunas
+        users_data = []
+        for row in cursor.fetchall():
+            users_data.append(dict(zip(columns, row)))
+        
+        # Obter dados de sessões (se aplicável)
+        sessions_data = []
+        cursor.execute("SELECT * FROM sessions")
+        columns = [column[0] for column in cursor.description]
+        for row in cursor.fetchall():
+            sessions_data.append(dict(zip(columns, row)))
+        
+        data = {
+            "users": users_data,
+            "sessions": sessions_data,
+            "backup_timestamp": datetime.now().isoformat()
+        }
+        
+        # Salvar em arquivo JSON
+        with open(BACKUP_PATH, "w") as f:
+            json.dump(data, f, indent=2)
+            
+        return True
+        
+    except Exception as e:
+        print(f"Erro ao criar backup: {str(e)}")
+        return False
+    finally:
+        if conn:
+            conn.close()
+
 def main_app():
     st.set_page_config(
         page_title="Catálogo de Motores",
