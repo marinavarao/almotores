@@ -198,33 +198,33 @@ def main_app():
             
             # Campo de busca por digitação
             search_term = st.text_input(
-                "Digite a POSIÇÃO do motor:",
-                placeholder="Comece a digitar a POSIÇÃO...",
+                "Digite a TAG do motor:",
+                placeholder="Comece a digitar a TAG...",
                 key="tag_search"
             )
             
             try:
                 # Filtra as opções com base no que foi digitado
                 if search_term:
-                    mask = df["TAG ATUAL"].astype(str).str.contains(str(search_term), case=False, na=False)
-                    filtered_tags = df.loc[mask, "TAG ATUAL"].unique()
+                    mask = df["TAG ATIVO"].astype(str).str.contains(str(search_term), case=False, na=False)
+                    filtered_tags = df.loc[mask, "TAG ATIVO"].unique()
                 else:
-                    filtered_tags = df["TAG ATUAL"].unique()
+                    filtered_tags = df["TAG ATIVO"].unique()
                 
                 # Verifica se há resultados
                 if len(filtered_tags) == 0:
-                    st.warning("Nenhum motor encontrado com esta POSIÇÃO")
+                    st.warning("Nenhum motor encontrado com esta TAG")
                     st.stop()
                     
                 # Selecionador de TAG com as opções filtradas
                 selected_tag = st.selectbox(
-                    "Ou selecione a POSIÇÃO do motor:",
+                    "Ou selecione a TAG do motor:",
                     options=filtered_tags,
                     index=0
                 )
                 
                 # Filtra os dados
-                motor_data = df[df["TAG ATUAL"] == selected_tag].iloc[0]
+                motor_data = df[df["TAG ATIVO"] == selected_tag].iloc[0]
                 
             except Exception as e: 
                 st.error(f"Erro ao filtrar dados: {str(e)}")
@@ -241,7 +241,7 @@ def main_app():
                 col1, col2 = st.columns(2)
                 with col1:
                     st.markdown(f"""
-                    **TAG Ativo:** {motor_data["TAG ATIVO"]}  
+                    **Posição:** {motor_data["TAG ATUAL"]}  
                     **Descrição:** {motor_data["DESCRIÇÃO"]}  
                     **Localização:** {motor_data["LOCAL"]}  
                     **Área de Instalação:** {motor_data["ÁREA"]}  
