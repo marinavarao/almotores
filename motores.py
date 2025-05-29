@@ -281,7 +281,7 @@ def main_app():
         filtered_df["TAG/POSIÇÃO"] = filtered_df["TAG ATIVO"] + " | " + filtered_df["TAG ATUAL"]
         
         # Seleciona apenas as colunas relevantes para exibição
-        display_cols = ["TAG/POSIÇÃO", "DESCRIÇÃO", "LOCAL", "POTÊNCIA (kW)"]
+        display_cols = ["TAG/POSIÇÃO", "DESCRIÇÃO", "ÁREA", "POTÊNCIA (kW)"]
         display_df = filtered_df[display_cols]
         
         # Formatação da tabela
