@@ -292,7 +292,7 @@ def main_app():
             column_config={
                 "TAG/POSIÇÃO": "Identificação",
                 "DESCRIÇÃO": "Descrição",
-                "LOCAL": "Localização",
+                "ÁREA": "Localização",
                 "POTÊNCIA (kW)": "Potência (kW)"
             }
         )
