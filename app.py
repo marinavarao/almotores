@@ -77,7 +77,7 @@ def manage_users():
     st.title("Gerenciamento de Usuários")
     
     # Abas para diferentes operações
-    tab1, tab2, tab3 = st.tabs(["Criar Usuário", "Listar Usuários", "Editar Usuários"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Criar Usuário", "Listar Usuários", "Editar Usuários", "Backup"])
     
     with tab1:
         with st.form("create_user_form"):
@@ -149,6 +149,29 @@ def manage_users():
                     except sqlite3.IntegrityError:
                         st.error("Nome de usuário já existe")
         conn.close()
+        
+    with tab4:  # ← Nova aba de backup
+        st.subheader("Backup do Banco de Dados")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("🔄 Criar Backup Agora"):
+                with open("users.db", "rb") as f:
+                    st.download_button(
+                        label="⬇️ Download do Backup",
+                        data=f,
+                        file_name=f"backup_usuarios_{datetime.now().strftime('%Y%m%d_%H%M')}.db",
+                        mime="application/octet-stream"
+                    )
+        
+        with col2:
+            st.warning("""
+            **Instruções:**  
+            1. Clique em "Criar Backup"  
+            2. Faça download do arquivo  
+            3. Armazene em local seguro
+            """)
 
 def main_app():
     st.set_page_config(
