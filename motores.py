@@ -338,7 +338,7 @@ def main_app():
                 **Fabricante:** {motor_data["FABRICANTE"]}  
                 **Modelo:** {motor_data["MODELO"]}  
                 **N° Série:** {motor_data["N° DE SÉRIE"]}  
-                **Ano Fabricação:** {motor_data["ANO FAB."]}
+                **Ano Fabricação:** {motor_data["ANO FAB."]}   
                 **Painel:** {motor_data["PAINEL"]}
                 """)
         
