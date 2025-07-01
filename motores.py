@@ -332,14 +332,14 @@ def main_app():
                 **Descrição:** {motor_data["DESCRIÇÃO"]}  
                 **Localização:** {motor_data["LOCAL"]}  
                 **Área de Instalação:** {motor_data["ÁREA"]}
-                **Painel:** {motor_data["PAINEL"]}
                 """)
             with col2:
                 st.markdown(f"""
                 **Fabricante:** {motor_data["FABRICANTE"]}  
                 **Modelo:** {motor_data["MODELO"]}  
                 **N° Série:** {motor_data["N° DE SÉRIE"]}  
-                **Ano Fabricação:** {motor_data["ANO FAB."]}  
+                **Ano Fabricação:** {motor_data["ANO FAB."]}
+                **Painel:** {motor_data["PAINEL"]}
                 """)
         
         with tab2:
