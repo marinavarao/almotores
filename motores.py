@@ -331,7 +331,8 @@ def main_app():
                 **TAG Atual (Posição):** {motor_data["TAG ATUAL"]}  
                 **Descrição:** {motor_data["DESCRIÇÃO"]}  
                 **Localização:** {motor_data["LOCAL"]}  
-                **Área de Instalação:** {motor_data["ÁREA"]}  
+                **Área de Instalação:** {motor_data["ÁREA"]}
+                **Painel:** {motor_data["PAINEL"]}
                 """)
             with col2:
                 st.markdown(f"""
